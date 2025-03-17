@@ -40,7 +40,7 @@ ax.bar(categories, video_counts, color='deepskyblue')
 ax.axhline(y=average_videos, color='red', linestyle='dotted', linewidth=2, label=f'Avg: {average_videos:.2f}')
 
 # Format x-axis labels to be diagonal and smaller
-ax.set_xticklabels(categories, rotation=45, ha="right", fontsize=4)
+ax.set_xticklabels(categories, rotation=45, ha="right", fontsize=5)
 
 # Labels and title
 ax.set_xlabel("Action Category", fontsize=12, color="white")
