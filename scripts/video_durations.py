@@ -1,58 +1,39 @@
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
+import cv2
+import csv
 
-# Enable dark mode
-plt.style.use("dark_background")
+def get_video_duration(video_path):
+    """Returns the duration of the video in seconds."""
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return None  # If video cannot be opened, return None
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+    if fps > 0:
+        return frame_count / fps  # Calculate duration
+    return None
 
-# Define base directory (go up one level from 'scripts/')
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def process_videos(folder_path, output_csv):
+    """Scans folder for MP4 videos, extracts their names and durations, and saves to CSV."""
+    video_data = []
 
-# Define paths relative to base directory
-data_folder = os.path.join(base_dir, "data")
-visualization_folder = os.path.join(base_dir, "visualizations")
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".mp4"):
+            video_path = os.path.join(folder_path, filename)
+            duration = get_video_duration(video_path)
+            if duration is not None:
+                video_data.append([filename, round(duration, 2)])
 
-csv_file = os.path.join(data_folder, "video_durations.csv")
-output_image = os.path.join(visualization_folder, "video_durations.png")
+    # Save to CSV
+    with open(output_csv, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Video Name", "Duration (seconds)"])
+        writer.writerows(video_data)
 
-# Ensure folders exist
-os.makedirs(data_folder, exist_ok=True)
-os.makedirs(visualization_folder, exist_ok=True)
+    print(f"CSV file saved: {output_csv}")
 
-# Read the CSV file (comma-separated)
-df = pd.read_csv(csv_file)
-
-# Strip whitespace from column names (just in case)
-df.columns = df.columns.str.strip()
-
-# Extract video names and durations
-video_names = df["Video Name"]
-durations = df["Duration (seconds)"]
-
-# Compute average duration
-average_duration = durations.mean()
-
-# Create the bar plot
-fig, ax = plt.subplots(figsize=(12, 6))
-ax.bar(video_names, durations, color='deepskyblue')
-
-# Add horizontal average line
-ax.axhline(y=average_duration, color='red', linestyle='dotted', linewidth=2, label=f'Avg: {average_duration:.2f} sec')
-
-# Format x-axis labels to be diagonal and smaller
-ax.set_xticklabels(video_names, rotation=45, ha="right", fontsize=5)
-
-# Labels and title
-ax.set_xlabel("Video Name", fontsize=12, color="white")
-ax.set_ylabel("Duration (seconds)", fontsize=12, color="white")
-ax.set_title("Video Durations in UCF-101", fontsize=14, color="white")
-
-# Add legend
-ax.legend(fontsize=10)
-
-# Ensure layout fits
-plt.tight_layout()
-
-# Save the dark theme plot
-plt.savefig(output_image, dpi=300)
-plt.show()
+# Example usage
+folder_path = "./101"  # Update with your folder path
+output_csv = "video_durations.csv"
+process_videos(folder_path, output_csv)
