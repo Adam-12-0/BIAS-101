@@ -1,39 +1,35 @@
 import os
-import cv2
-import csv
+import pandas as pd
+import matplotlib.pyplot as plt
 
-def get_video_duration(video_path):
-    """Returns the duration of the video in seconds."""
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        return None  # If video cannot be opened, return None
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    cap.release()
-    if fps > 0:
-        return frame_count / fps  # Calculate duration
-    return None
+def plot_video_durations():
+    input_file = 'data/video_durations.csv'
+    output_folder = 'visualizations/'
+    os.makedirs(output_folder, exist_ok=True)
 
-def process_videos(folder_path, output_csv):
-    """Scans folder for MP4 videos, extracts their names and durations, and saves to CSV."""
-    video_data = []
+    df = pd.read_csv(input_file)
 
-    for filename in os.listdir(folder_path):
-        if filename.endswith(".mp4"):
-            video_path = os.path.join(folder_path, filename)
-            duration = get_video_duration(video_path)
-            if duration is not None:
-                video_data.append([filename, round(duration, 2)])
+    if not {'Video Name', 'Duration (seconds)'}.issubset(df.columns):
+        raise ValueError("CSV file must contain 'Video Name' and 'Duration (seconds)' columns.")
 
-    # Save to CSV
-    with open(output_csv, "w", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["Video Name", "Duration (seconds)"])
-        writer.writerows(video_data)
+    average_duration = df['Duration (seconds)'].mean()
 
-    print(f"CSV file saved: {output_csv}")
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.bar(df['Video Name'], df['Duration (seconds)'], color='blue')
+    ax.axhline(y=average_duration, color='red', linestyle='dashed', linewidth=2, label=f'Avg: {average_duration:.2f} sec')
 
-# Example usage
-folder_path = "./101"  # Update with your folder path
-output_csv = "video_durations.csv"
-process_videos(folder_path, output_csv)
+    ax.set_title('Video Durations in UCF-101', fontsize=16)
+    ax.set_xlabel('Video Name', fontsize=12)
+    ax.set_ylabel('Duration (seconds)', fontsize=12)
+    ax.set_xticklabels(df['Video Name'], rotation=45, ha='right', fontsize=5)
+    ax.legend(loc='upper right', fontsize=10)
+    plt.tight_layout()
+
+    output_path = os.path.join(output_folder, 'video_durations.png')
+    plt.savefig(output_path, dpi=300)
+    plt.close()
+    print(f"Plot saved as: {output_path}")
+
+
+if __name__ == "__main__":
+    plot_video_durations()

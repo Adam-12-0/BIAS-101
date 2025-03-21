@@ -2,9 +2,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-# Enable dark mode
-plt.style.use("dark_background")
-
 # Define base directory (go up one level from 'scripts/')
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -30,29 +27,26 @@ categories = df["Category"]
 video_counts = df["# Videos"]
 
 # Compute average number of videos
-average_videos = video_counts.mean()
+average_videos = int(video_counts.mean())
 
 # Create the bar plot
 fig, ax = plt.subplots(figsize=(12, 6))
-ax.bar(categories, video_counts, color='deepskyblue')
+ax.bar(categories, video_counts, color='blue')
 
 # Add horizontal average line
-ax.axhline(y=average_videos, color='red', linestyle='dotted', linewidth=2, label=f'Avg: {average_videos:.2f}')
+ax.axhline(y=average_videos, color='red', linestyle='dashed', linewidth=2, label=f'Avg: {average_videos}')
 
-# Format x-axis labels to be diagonal and smaller
+# Format x-axis labels
 ax.set_xticklabels(categories, rotation=45, ha="right", fontsize=5)
 
 # Labels and title
-ax.set_xlabel("Action Category", fontsize=12, color="white")
-ax.set_ylabel("Number of Videos", fontsize=12, color="white")
-ax.set_title("Number of Videos per Action Category in UCF-101", fontsize=14, color="white")
+ax.set_xlabel("Action Category", fontsize=12)
+ax.set_ylabel("Number of Videos", fontsize=12)
+ax.set_title("Number of Videos per Action Category in UCF-101", fontsize=14)
 
 # Add legend
 ax.legend(fontsize=10)
 
-# Ensure layout fits
 plt.tight_layout()
-
-# Save the dark theme plot
 plt.savefig(output_image, dpi=300)
 plt.show()
