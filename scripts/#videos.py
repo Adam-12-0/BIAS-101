@@ -45,7 +45,7 @@ ax.set_ylabel("Number of Videos", fontsize=12)
 ax.set_title("Number of Videos per Action Category in UCF-101", fontsize=14)
 
 # Add legend
-ax.legend(fontsize=10)
+ax.legend(fontsize=15)
 
 plt.tight_layout()
 plt.savefig(output_image, dpi=300)

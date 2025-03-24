@@ -59,7 +59,7 @@ def plot_and_save(data, model_name, metric_name, bias_type, output_folder):
 
         # Add custom legend for bar colors
         legend_handles = [plt.Line2D([0], [0], color=colors[key], lw=4, label=key) for key in colors.keys()]
-        plt.legend(handles=legend_handles, loc='upper right', fontsize=8)
+        plt.legend(handles=legend_handles, loc='upper right', fontsize=15)
     
     else:
         plt.bar(data.index, data[metric_name], color='blue')

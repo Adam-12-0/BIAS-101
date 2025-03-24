@@ -37,7 +37,7 @@ def plot_stacked_bar_chart(model_name: str, bias_type: str, category_df: pd.Data
     ax.set_xlabel('Action Categories', fontsize=12)
     ax.set_ylabel('Percentage of Videos (0 to 1)', fontsize=12)
     ax.set_xticklabels(category_df.index, rotation=45, ha='right', fontsize=5)
-    ax.legend(loc='upper left', fontsize=8)
+    ax.legend(loc='upper left', fontsize=15)
     plt.tight_layout()
 
     output_folder = f'visualizations/{model_name}/'

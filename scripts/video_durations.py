@@ -22,7 +22,7 @@ def plot_video_durations():
     ax.set_xlabel('Video Name', fontsize=12)
     ax.set_ylabel('Duration (seconds)', fontsize=12)
     ax.set_xticklabels(df['Video Name'], rotation=45, ha='right', fontsize=5)
-    ax.legend(loc='upper right', fontsize=10)
+    ax.legend(loc='upper right', fontsize=15)
     plt.tight_layout()
 
     output_path = os.path.join(output_folder, 'video_durations.png')
