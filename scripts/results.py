@@ -40,7 +40,7 @@ def plot_stacked_bar_chart(model_name: str, bias_type: str, category_df: pd.Data
     ax.legend(loc='upper left', fontsize=15)
     plt.tight_layout()
 
-    output_folder = f'visualizations/{model_name}/'
+    output_folder = f'visualizations/{model_name}/{bias_type}'
     os.makedirs(output_folder, exist_ok=True)
     plt.savefig(f'{output_folder}/{bias_type}_results.png')
     plt.close()
@@ -48,7 +48,12 @@ def plot_stacked_bar_chart(model_name: str, bias_type: str, category_df: pd.Data
 
 def main():
     for model_name in ['clip', 'llava']:
-        for bias_type in ['gender', 'race']:
+        input_folder = f'data/{model_name}/'
+        
+        # Automatically detect all bias types
+        bias_types = {file.split('_')[1].split('.')[0] for file in os.listdir(input_folder) if file.endswith('.csv')}
+        
+        for bias_type in bias_types:
             category_df = load_and_prepare_data(model_name, bias_type)
             plot_stacked_bar_chart(model_name, bias_type, category_df)
 

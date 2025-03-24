@@ -84,7 +84,7 @@ def plot_and_save(data, model_name, metric_name, bias_type, output_folder):
 def process_model_data(model_name: str):
     input_folder = f'data/{model_name}/'
     output_folder = f'visualizations/{model_name}/'
-    os.makedirs(output_folder, exist_ok=True)
+    
 
     combined_results = pd.DataFrame()
 
@@ -98,6 +98,8 @@ def process_model_data(model_name: str):
 
             # Determine Bias Type from Filename (gender or race)
             bias_type = file.split('_')[1].split('.')[0]
+            output_folder = f'visualizations/{model_name}/{bias_type.capitalize()}/'
+            os.makedirs(output_folder, exist_ok=True)
             results_df.columns = [f'{bias_type.capitalize()} Class', f'{bias_type.capitalize()} DR', f'{bias_type.capitalize()} Chi-Square']
 
             combined_results = pd.concat([combined_results, results_df], axis=1)
