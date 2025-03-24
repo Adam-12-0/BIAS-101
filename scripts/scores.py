@@ -25,20 +25,20 @@ def compute_dominance_ratio_and_chi_square(df: pd.DataFrame) -> pd.DataFrame:
         total_count = subcategory_counts.sum()
 
         # Calculate Dominance Ratio
-        N = len(subcategory_counts)  # Total number of classes for the bias type
+        N = len(subcategory_counts)
         dominance_ratio = most_represented_score / (total_count * N) if total_count > 0 else 0
 
         # Calculate Chi-Square Score
         expected_counts = [total_count / N] * N
         observed_counts = subcategory_counts.values
         
-        if len(observed_counts) == N:  # Ensure matching size
-            epsilon = 1e-10  # Small value to prevent division by zero
+        if len(observed_counts) == N:
+            epsilon = 1e-10
             adjusted_expected_counts = [max(count, epsilon) for count in expected_counts]
             chi_square = sum(((observed_counts - adjusted_expected_counts) ** 2) / adjusted_expected_counts)
         else:
-            chi_square = 0  # Set to 0 if categories are incomplete
-        
+            chi_square = 0
+
         # Store results
         category_stats[category] = {
             'Dominant Class': most_represented,
@@ -50,23 +50,34 @@ def compute_dominance_ratio_and_chi_square(df: pd.DataFrame) -> pd.DataFrame:
 
 def plot_and_save(data, model_name, metric_name, bias_type, output_folder):
     plt.figure(figsize=(12, 6))
-    plt.bar(data.index, data[metric_name], color='blue')
-    average_value = data[metric_name].mean()
+
+    if metric_name == f'{bias_type.capitalize()} DR':
+        colors = {sub: HIGH_CONTRAST_COLORS[i % len(HIGH_CONTRAST_COLORS)] for i, sub in enumerate(data[f'{bias_type.capitalize()} Class'].unique())}
+        
+        bar_colors = [colors[class_name] for class_name in data[f'{bias_type.capitalize()} Class']]
+        plt.bar(data.index, data[metric_name], color=bar_colors)
+
+        # Add custom legend for bar colors
+        legend_handles = [plt.Line2D([0], [0], color=colors[key], lw=4, label=key) for key in colors.keys()]
+        plt.legend(handles=legend_handles, loc='upper right', fontsize=8)
     
+    else:
+        plt.bar(data.index, data[metric_name], color='blue')
+
+    average_value = data[metric_name].mean()
     plt.axhline(y=average_value, color='red', linestyle='dashed', linewidth=2, label=f'Avg: {average_value:.2f}')
     plt.xticks(rotation=45, ha='right', fontsize=5)
-    plt.title(f'{model_name.upper()} - {bias_type.capitalize()} {metric_name} Visualization')
+    plt.title(f'{model_name.upper()} - {metric_name} Visualization')
     plt.xlabel('Action Categories', fontsize=12)
     plt.ylabel(metric_name, fontsize=12)
-    plt.legend(loc='upper right', fontsize=8)
     plt.tight_layout()
-    
+
     # Save plot
-    if metric_name == 'Dominance Ratio':
+    if metric_name == f'{bias_type.capitalize()} DR':
         plot_name = f'{bias_type}_dr.png'
     else:
         plot_name = f'{bias_type}_chi.png'
-        
+
     plt.savefig(f'{output_folder}{plot_name}')
     plt.close()
 
@@ -106,7 +117,6 @@ def process_model_data(model_name: str):
 def main():
     process_model_data('clip')
     process_model_data('llava')
-
 
 if __name__ == "__main__":
     main()
