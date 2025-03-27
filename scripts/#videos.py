@@ -1,52 +1,62 @@
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
+import re
 
-# Define base directory (go up one level from 'scripts/')
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def plot_video_sample_sd():
+    ucf101_path = 'C:/Users/AdamB/BIAS-101/UCF-101'  # Using forward slashes
+    input_file = 'data/#videos.csv'
+    output_folder = 'visualizations/'
+    os.makedirs(output_folder, exist_ok=True)
 
-# Define paths relative to base directory
-data_folder = os.path.join(base_dir, "data")
-visualization_folder = os.path.join(base_dir, "visualizations")
+    video_data = []
 
-csv_file = os.path.join(data_folder, "#videos.csv")
-output_image = os.path.join(visualization_folder, "#videos.png")
+    # Traverse the UCF-101 directory
+    for category in os.listdir(ucf101_path):
+        category_path = os.path.join(ucf101_path, category)
+        if not os.path.isdir(category_path):
+            continue
 
-# Ensure folders exist
-os.makedirs(data_folder, exist_ok=True)
-os.makedirs(visualization_folder, exist_ok=True)
+        group_counts = {}
 
-# Read the CSV file (Correct delimiter to comma)
-df = pd.read_csv(csv_file, delimiter=',')
+        for video_name in os.listdir(category_path):
+            match = re.search(r'_g(\d+)_', video_name)
+            if match:
+                group_number = int(match.group(1))
+                if group_number not in group_counts:
+                    group_counts[group_number] = 0
+                group_counts[group_number] += 1
 
-# Strip whitespace from column names (just in case)
-df.columns = df.columns.str.strip()
+        # Calculate the standard deviation of the sample counts per video
+        sample_counts = list(group_counts.values())
+        if len(sample_counts) > 1:  # Only calculate std if there are multiple samples
+            std_sample_count = pd.Series(sample_counts).std()
+        else:
+            std_sample_count = 0  # No variation if only one sample exists
 
-# Extract category names and video counts
-categories = df["Category"]
-video_counts = df["# Videos"]
+        video_data.append([category, std_sample_count])
 
-# Compute average number of videos
-average_videos = int(video_counts.mean())
+    # Create DataFrame and save to CSV
+    df = pd.DataFrame(video_data, columns=['Action Category', 'Sample Count Standard Deviation'])
+    os.makedirs('data', exist_ok=True)
+    df.to_csv(input_file, index=False)
 
-# Create the bar plot
-fig, ax = plt.subplots(figsize=(12, 6))
-ax.bar(categories, video_counts, color='blue')
+    # Plotting
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax.bar(df['Action Category'], df['Sample Count Standard Deviation'], color='blue')
 
-# Add horizontal average line
-ax.axhline(y=average_videos, color='red', linestyle='dashed', linewidth=2, label=f'Avg: {average_videos}')
+    ax.set_title('Standard Deviation of Sample Counts per Video in UCF-101', fontsize=16)
+    ax.set_xlabel('Action Category', fontsize=12)
+    ax.set_ylabel('Sample Count Standard Deviation', fontsize=12)
+    ax.set_xticks(range(len(df['Action Category'])))
+    ax.set_xticklabels(df['Action Category'], rotation=45, ha='right', fontsize=5)
 
-# Format x-axis labels
-ax.set_xticklabels(categories, rotation=45, ha="right", fontsize=5)
+    plt.tight_layout()
+    output_path = os.path.join(output_folder, '#videos.png')
+    plt.savefig(output_path, dpi=300)
+    plt.close()
+    print(f"Plot saved as: {output_path}")
 
-# Labels and title
-ax.set_xlabel("Action Category", fontsize=12)
-ax.set_ylabel("Number of Videos", fontsize=12)
-ax.set_title("Number of Videos per Action Category in UCF-101", fontsize=14)
 
-# Add legend
-ax.legend(fontsize=15)
-
-plt.tight_layout()
-plt.savefig(output_image, dpi=300)
-plt.show()
+if __name__ == "__main__":
+    plot_video_sample_sd()
