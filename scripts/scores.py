@@ -52,12 +52,18 @@ def plot_and_save(data, model_name, metric_name, bias_type, output_folder):
     plt.figure(figsize=(12, 6))
 
     if metric_name == f'{bias_type.capitalize()} DR':
-        colors = {sub: HIGH_CONTRAST_COLORS[i % len(HIGH_CONTRAST_COLORS)] for i, sub in enumerate(data[f'{bias_type.capitalize()} Class'].unique())}
+        # Ensure all categories are represented in the legend
+        unique_categories = sorted(data[f'{bias_type.capitalize()} Class'].unique())
         
-        bar_colors = [colors[class_name] for class_name in data[f'{bias_type.capitalize()} Class']]
+        # Generate consistent colors for all categories
+        colors = {sub: HIGH_CONTRAST_COLORS[i % len(HIGH_CONTRAST_COLORS)] for i, sub in enumerate(unique_categories)}
+        
+        # Assign bar colors based on the category
+        bar_colors = [colors[class_name] if class_name in colors else 'gray' for class_name in data[f'{bias_type.capitalize()} Class']]
+        
         plt.bar(data.index, data[metric_name], color=bar_colors)
-
-        # Add custom legend for bar colors
+        
+        # Create legend for all categories
         legend_handles = [plt.Line2D([0], [0], color=colors[key], lw=4, label=key) for key in colors.keys()]
         plt.legend(handles=legend_handles, loc='upper right', fontsize=15)
     
@@ -78,7 +84,7 @@ def plot_and_save(data, model_name, metric_name, bias_type, output_folder):
     else:
         plot_name = f'{bias_type}_chi.png'
 
-    plt.savefig(f'{output_folder}{plot_name}')
+    plt.savefig(f'{output_folder}/{plot_name}')
     plt.close()
 
 def process_model_data(model_name: str):
