@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings("ignore", message="The following named arguments are not valid for `VideoMAEImageProcessor.preprocess`")
+
 import torch
 from transformers import AutoProcessor, AutoModel
 import cv2
@@ -42,7 +45,7 @@ def subsample_frames(frames_list):
     indices = np.linspace(0, len(frames_list) - 1, num=32, dtype=int)
     return [frames_list[i] for i in indices]   
 
-def inference(model, processor, video, action_desc, idx, print_scores):
+def inference(model, processor, video, action_desc, idx, print_scores, threshold):
     """ 
     Performs inference with the xclip model and returns if the action is being performed or not.
     
@@ -71,18 +74,13 @@ def inference(model, processor, video, action_desc, idx, print_scores):
 
     # Similarity score for action in question
     similarity_score = probs[0][idx].item()
-    # Most likely text description
-    max_val = max(probs[0])
-    
     # Print scores
     if print_scores:
-        print(probs)
+        print(f"Probabilities: {probs}")
         print(f"Similarity Score: {similarity_score:.4f}")
-        print(max_val)
 
-
-    # Return if the action is present
-    if similarity_score == max_val:
+    # Return if the action is present with threshold % certianty
+    if similarity_score > threshold:
         return True
     else:
         return False
@@ -91,10 +89,12 @@ def main():
     processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch16-ucf-16-shot")
     model = AutoModel.from_pretrained("microsoft/xclip-base-patch16-ucf-16-shot")
     video = './clips/Survivor-Scene-008.mp4' # a 6 sec clip of an Austrilan beauty pagent from austrailan survivor
-    #desc = ["An Austrilan beauty pagent.", "NOT an Austrilan beauty pagent"] # Correct
-    #desc = ["A baseball game", "NOT a baseball game"] # Corret
-    desc = ["A concert", "NOT a concert"] # ncorrect
-    print(inference(model, processor, video, desc, 0, True))
+    
+    #desc = ["An Austrilan beauty pagent.", "NOT an Austrilan beauty pagent"] 
+    #desc = ["A baseball game", "NOT a baseball game"]
+    desc = ["A concert", "NOT a concert"] 
+    
+    print(inference(model, processor, video, desc, 0, True, 0.70))
 
 if __name__ == "__main__":
     main()
