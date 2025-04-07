@@ -4,13 +4,13 @@ import requests
 import time
 import argparse
 from googleapiclient.discovery import build
+from datetime import datetime
 
 # Configuration
 QUERIES_FILE = "search_queries.csv"
 RESULTS_DIR = "youtube_results"
 MAX_RESULTS_PER_QUERY = 5
-DELAY_BETWEEN_QUERIES = 10  # seconds, to avoid hitting API rate limits
-
+DELAY_BETWEEN_QUERIES = 1  # seconds, to avoid hitting API rate limits
 API_KEY = 'AIzaSyCvqFjB9_6lyYkSWWgTthiz9nOCTlZzMc4'  # Replace with your actual API key
 
 
@@ -53,6 +53,27 @@ def search_youtube_videos(query, max_results=10):
     )
 
     response = request.execute()
+
+    # Get the video IDs
+    video_ids = [item['id']['videoId'] for item in response['items']]
+
+    # Get additional metadata for these videos
+    if video_ids:
+        videos_request = youtube.videos().list(
+            part='snippet,contentDetails,statistics,topicDetails',
+            id=','.join(video_ids)
+        )
+        videos_response = videos_request.execute()
+
+        # Create a mapping of video IDs to their additional metadata
+        video_metadata = {item['id']: item for item in videos_response['items']}
+
+        # Add additional metadata to the original search results
+        for item in response['items']:
+            video_id = item['id']['videoId']
+            if video_id in video_metadata:
+                item['metadata'] = video_metadata[video_id]
+
     return response['items']
 
 
@@ -80,7 +101,39 @@ def download_thumbnail(url, filename):
         return False
 
 
-def process_video_data(videos, race, gender, action, thumbnails_dir):
+def parse_duration(duration_str):
+    """
+    Parse ISO 8601 duration format to seconds.
+
+    Args:
+        duration_str (str): Duration string in ISO 8601 format (e.g., 'PT1H2M3S')
+
+    Returns:
+        int: Duration in seconds
+    """
+    duration = 0
+    # Remove 'PT' prefix
+    time_str = duration_str.replace('PT', '')
+
+    # Extract hours
+    if 'H' in time_str:
+        hours, time_str = time_str.split('H')
+        duration += int(hours) * 3600
+
+    # Extract minutes
+    if 'M' in time_str:
+        minutes, time_str = time_str.split('M')
+        duration += int(minutes) * 60
+
+    # Extract seconds
+    if 'S' in time_str:
+        seconds = time_str.replace('S', '')
+        duration += int(seconds)
+
+    return duration
+
+
+def process_video_data(videos, race, gender, action, action_dir):
     """
     Process video data and download thumbnails.
 
@@ -89,17 +142,67 @@ def process_video_data(videos, race, gender, action, thumbnails_dir):
         race (str): Race used in the search query
         gender (str): Gender used in the search query
         action (str): Action used in the search query
-        thumbnails_dir (str): Directory to save thumbnails
+        action_dir (str): Directory for the action category
 
     Returns:
         list: List of processed video data dictionaries
     """
     processed_data = []
 
+    # Create race_gender specific thumbnail directory
+    demographic_dir = f"{race} {gender}"
+    thumbnails_dir = os.path.join(action_dir, 'thumbnails', demographic_dir)
+    if not os.path.exists(thumbnails_dir):
+        os.makedirs(thumbnails_dir)
+
     for video in videos:
         video_id = video['id']['videoId']
         title = video['snippet']['title']
         link = f"https://www.youtube.com/watch?v={video_id}"
+
+        # Get basic snippet data
+        description = video['snippet'].get('description', '')
+
+        # Dictionary to store our processed data
+        video_data = {
+            'Race': race,
+            'Gender': gender,
+            'Action': action,
+            'Search Query': f"{race} {gender} {action}",
+            'Title': title,
+            'Video ID': video_id,
+            'Link': link,
+            'Description': description
+        }
+
+        # Additional metadata if available
+        if 'metadata' in video:
+            metadata = video['metadata']
+
+            # Content details
+            if 'contentDetails' in metadata:
+                # Parse duration from ISO 8601 format
+                duration_str = metadata['contentDetails'].get('duration', '')
+                duration_seconds = parse_duration(duration_str) if duration_str else 0
+
+                video_data.update({
+                    'Duration (seconds)': duration_seconds
+                })
+
+            # Statistics
+            if 'statistics' in metadata:
+                video_data.update({
+                    'View Count': int(metadata['statistics'].get('viewCount', 0)),
+                    'Like Count': int(metadata['statistics'].get('likeCount', 0)),
+                    'Comment Count': int(metadata['statistics'].get('commentCount', 0))
+                })
+
+            # Topic details
+            if 'topicDetails' in metadata and 'topicCategories' in metadata['topicDetails']:
+                topics = metadata['topicDetails']['topicCategories']
+                # Extract the category name from the URL (e.g., https://en.wikipedia.org/wiki/Music -> Music)
+                topic_names = [t.split('/')[-1].replace('_', ' ') for t in topics]
+                video_data['Topics'] = ', '.join(topic_names)
 
         # Get highest quality thumbnail available
         thumbnails = video['snippet']['thumbnails']
@@ -114,22 +217,59 @@ def process_video_data(videos, race, gender, action, thumbnails_dir):
         img_filename = f"{video_id}.jpg"
         img_path = os.path.join(thumbnails_dir, img_filename)
 
+        # Create a relative path for storage in CSV (easier to move directories later)
+        relative_img_path = os.path.join('thumbnails', demographic_dir, img_filename)
+
         # Download the thumbnail
         success = download_thumbnail(thumbnail_url, img_path)
 
-        # Add query information and video data
-        processed_data.append({
-            'Race': race,
-            'Gender': gender,
-            'Action': action,
-            'Search Query': f"{race} {gender} {action}",
-            'Title': title,
-            'Video ID': video_id,
-            'Link': link,
-            'Thumbnail Path': img_path if success else 'Download failed'
-        })
+        # Add thumbnail path to video data
+        video_data['Thumbnail Path'] = relative_img_path if success else 'Download failed'
+
+        processed_data.append(video_data)
 
     return processed_data
+
+
+def save_results_incrementally(results, action, results_dir, mode='a'):
+    """
+    Save results incrementally to CSV file.
+
+    Args:
+        results (list): List of results to save
+        action (str): Action category
+        results_dir (str): Base directory for results
+        mode (str): File open mode ('a' for append, 'w' for write)
+
+    Returns:
+        str: Path to the saved CSV file
+    """
+    if not results:
+        return None
+
+    # Create action directory if it doesn't exist
+    action_safe_name = action.replace(' ', '_')
+    action_dir = os.path.join(results_dir, action_safe_name)
+
+    if not os.path.exists(action_dir):
+        os.makedirs(action_dir)
+
+    # Create DataFrame from results
+    df = pd.DataFrame(results)
+
+    # Define CSV path
+    csv_path = os.path.join(action_dir, f"{action_safe_name}_results.csv")
+
+    # Check if file exists to determine if we need headers
+    file_exists = os.path.isfile(csv_path)
+
+    # Save to CSV
+    if mode == 'w' or not file_exists:
+        df.to_csv(csv_path, index=False)
+    else:  # Append without headers if file exists
+        df.to_csv(csv_path, mode='a', header=not file_exists, index=False)
+
+    return csv_path
 
 
 def load_search_queries(file_path=QUERIES_FILE, subset=None):
@@ -157,22 +297,66 @@ def load_search_queries(file_path=QUERIES_FILE, subset=None):
     return df
 
 
-def process_queries(queries_df, results_dir, max_results=MAX_RESULTS_PER_QUERY, delay=DELAY_BETWEEN_QUERIES):
+def get_completed_queries(results_dir):
     """
-    Process each query in the DataFrame and save results.
+    Get a list of already completed queries from existing CSV files.
+
+    Args:
+        results_dir (str): Directory where results are stored
+
+    Returns:
+        set: Set of already processed "race gender action" combinations
+    """
+    completed = set()
+
+    # Check if the directory exists
+    if not os.path.exists(results_dir):
+        return completed
+
+    # Check each action directory for result CSVs
+    for action_dir in os.listdir(results_dir):
+        action_path = os.path.join(results_dir, action_dir)
+
+        # Skip if not a directory
+        if not os.path.isdir(action_path):
+            continue
+
+        # Check for results CSV
+        csv_path = os.path.join(action_path, f"{action_dir}_results.csv")
+        if os.path.exists(csv_path):
+            try:
+                # Load the CSV and get the unique search queries
+                df = pd.read_csv(csv_path)
+                if 'Search Query' in df.columns:
+                    completed.update(df['Search Query'].unique())
+            except Exception as e:
+                print(f"Error reading {csv_path}: {e}")
+
+    return completed
+
+
+def process_queries(queries_df, results_dir, max_results=MAX_RESULTS_PER_QUERY, delay=DELAY_BETWEEN_QUERIES,
+                    resume=True):
+    """
+    Process each query in the DataFrame and save results incrementally.
 
     Args:
         queries_df (pd.DataFrame): DataFrame with search queries
         results_dir (str): Directory to save results
         max_results (int): Maximum results per query
         delay (int): Delay between queries in seconds
+        resume (bool): Whether to skip already processed queries
     """
     total_queries = len(queries_df)
     processed = 0
     errors = 0
 
-    # Dictionary to store results by action category
-    action_results = {}
+    # Get already completed queries if resuming
+    completed_queries = set()
+    if resume:
+        completed_queries = get_completed_queries(results_dir)
+        if completed_queries:
+            print(f"Found {len(completed_queries)} already processed queries")
 
     print(f"Starting batch processing of {total_queries} queries...")
 
@@ -183,37 +367,41 @@ def process_queries(queries_df, results_dir, max_results=MAX_RESULTS_PER_QUERY, 
         gender = row['gender']
         action = row['action']
 
-        # Create subdirectories for the action category
-        action_dir = os.path.join(results_dir, action.replace(' ', '_'))
-        thumbnails_dir = os.path.join(action_dir, 'thumbnails')
+        # Check if this query has already been processed
+        search_query = f"{race} {gender} {action}"
+        if resume and search_query in completed_queries:
+            print(f"[{index + 1}/{total_queries}] Skipping (already processed): '{query}'")
+            processed += 1
+            continue
 
-        if not os.path.exists(thumbnails_dir):
-            os.makedirs(thumbnails_dir)
+        # Create directory for the action category
+        action_safe_name = action.replace(' ', '_')
+        action_dir = os.path.join(results_dir, action_safe_name)
+        if not os.path.exists(action_dir):
+            os.makedirs(action_dir)
 
         try:
-            print(f"[{processed + 1}/{total_queries}] Searching: '{query}'")
+            print(f"[{index + 1}/{total_queries}] Searching: '{query}'")
 
             # Call the YouTube search function
             videos = search_youtube_videos(query, max_results=max_results)
 
             if videos:
-                # Process the videos and store the data
-                results = process_video_data(videos, race, gender, action, thumbnails_dir)
+                # Process the videos and get the data
+                results = process_video_data(videos, race, gender, action, action_dir)
 
-                # Add to action-specific results (create list if first query for this action)
-                if action not in action_results:
-                    action_results[action] = []
-
-                action_results[action].extend(results)
+                # Save results incrementally
+                csv_path = save_results_incrementally(results, action, results_dir)
 
                 print(f"  ✓ Found {len(videos)} videos")
+                print(f"  ✓ Saved results to {csv_path}")
             else:
                 print(f"  ✗ No videos found")
 
             processed += 1
 
             # Delay between queries to avoid rate limiting
-            if processed < total_queries:
+            if index < total_queries - 1:  # If not the last query
                 print(f"  Waiting {delay} seconds before next query...")
                 time.sleep(delay)
 
@@ -221,19 +409,10 @@ def process_queries(queries_df, results_dir, max_results=MAX_RESULTS_PER_QUERY, 
             print(f"  ✗ Error processing query '{query}': {e}")
             errors += 1
 
-            # Continue with the next query
-            continue
-
-    # Save consolidated results by action category
-    for action, results in action_results.items():
-        if results:
-            # Create DataFrame from all results for this action
-            df = pd.DataFrame(results)
-
-            # Save to a single CSV file for this action
-            csv_path = os.path.join(results_dir, action.replace(' ', '_'), f"{action.replace(' ', '_')}_results.csv")
-            df.to_csv(csv_path, index=False)
-            print(f"Saved {len(results)} results for '{action}' to {csv_path}")
+            # Still wait before the next query even if there was an error
+            if index < total_queries - 1:
+                print(f"  Waiting {delay} seconds before next query...")
+                time.sleep(delay)
 
     print(f"\nBatch processing complete!")
     print(f"Processed: {processed}/{total_queries} queries")
@@ -250,6 +429,7 @@ def main():
     parser.add_argument("--delay", type=int, default=DELAY_BETWEEN_QUERIES, help="Delay between queries (seconds)")
     parser.add_argument("--subset", type=int, help="Process only a subset of queries (for testing)")
     parser.add_argument("--api-key", help="YouTube API key")
+    parser.add_argument("--no-resume", action="store_true", help="Don't skip already processed queries")
 
     args = parser.parse_args()
 
@@ -266,7 +446,13 @@ def main():
     queries_df = load_search_queries(args.queries, args.subset)
 
     # Process queries
-    process_queries(queries_df, results_dir, args.max_results, args.delay)
+    process_queries(
+        queries_df,
+        results_dir,
+        args.max_results,
+        args.delay,
+        resume=not args.no_resume
+    )
 
 
 if __name__ == "__main__":

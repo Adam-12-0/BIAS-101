@@ -16,8 +16,8 @@ RACES = [
 ]
 
 GENDERS = [
-    "Male",
-    "Female",
+    "Men",
+    "Women",
 ]
 
 
@@ -64,13 +64,13 @@ def generate_search_queries(actions, races, genders):
         for race in races:
             for gender in genders:
                 # Format the query
-                query = f"{race} {gender} {action}"
+                query = f"{action} {race} {gender}"
 
                 # Store the components for later analysis
                 queries.append({
+                    'action': action,
                     'race': race,
                     'gender': gender,
-                    'action': action,
                     'full_query': query
                 })
 
