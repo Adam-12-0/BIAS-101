@@ -24,14 +24,12 @@ def compute_dominance_ratio_and_chi_square(df: pd.DataFrame) -> pd.DataFrame:
         most_represented_score = subcategory_counts.max()
         total_count = subcategory_counts.sum()
 
-        # Calculate Dominance Ratio
         N = len(subcategory_counts)
         dominance_ratio = most_represented_score / (total_count * N) if total_count > 0 else 0
 
-        # Calculate Chi-Square Score
         expected_counts = [total_count / N] * N
         observed_counts = subcategory_counts.values
-        
+
         if len(observed_counts) == N:
             epsilon = 1e-10
             adjusted_expected_counts = [max(count, epsilon) for count in expected_counts]
@@ -39,7 +37,6 @@ def compute_dominance_ratio_and_chi_square(df: pd.DataFrame) -> pd.DataFrame:
         else:
             chi_square = 0
 
-        # Store results
         category_stats[category] = {
             'Dominant Class': most_represented,
             'Dominance Ratio': dominance_ratio,
@@ -52,79 +49,64 @@ def plot_and_save(data, model_name, metric_name, bias_type, output_folder):
     plt.figure(figsize=(12, 6))
 
     if metric_name == f'{bias_type.capitalize()} DR':
-        # Ensure all categories are represented in the legend
         unique_categories = sorted(data[f'{bias_type.capitalize()} Class'].unique())
-        
-        # Generate consistent colors for all categories
         colors = {sub: HIGH_CONTRAST_COLORS[i % len(HIGH_CONTRAST_COLORS)] for i, sub in enumerate(unique_categories)}
-        
-        # Assign bar colors based on the category
         bar_colors = [colors[class_name] if class_name in colors else 'gray' for class_name in data[f'{bias_type.capitalize()} Class']]
-        
         plt.bar(data.index, data[metric_name], color=bar_colors)
-        
-        # Create legend for all categories
         legend_handles = [plt.Line2D([0], [0], color=colors[key], lw=4, label=key) for key in colors.keys()]
         plt.legend(handles=legend_handles, loc='upper right', fontsize=15)
-    
     else:
         plt.bar(data.index, data[metric_name], color='blue')
 
-    average_value = data[metric_name].mean()
-    plt.axhline(y=average_value, color='red', linestyle='dashed', linewidth=2, label=f'Avg: {average_value:.2f}')
+    avg = data[metric_name].mean()
+    plt.axhline(y=avg, color='red', linestyle='dashed', linewidth=2, label=f'Avg: {avg:.2f}')
     plt.xticks(rotation=45, ha='right', fontsize=5)
     plt.title(f'{model_name.upper()} - {metric_name} Visualization')
     plt.xlabel('Action Categories', fontsize=12)
     plt.ylabel(metric_name, fontsize=12)
     plt.tight_layout()
 
-    # Save plot
-    if metric_name == f'{bias_type.capitalize()} DR':
-        plot_name = f'{bias_type}_dr.png'
-    else:
-        plot_name = f'{bias_type}_chi.png'
-
+    plot_name = f'{bias_type}_dr.png' if 'DR' in metric_name else f'{bias_type}_chi.png'
     plt.savefig(f'{output_folder}/{plot_name}')
     plt.close()
 
 def process_model_data(model_name: str):
     input_folder = f'data/{model_name}/'
-    output_folder = f'visualizations/{model_name}/'
-    
+    output_folder_root = f'visualizations/{model_name}/'
 
     combined_results = pd.DataFrame()
 
     for file in os.listdir(input_folder):
-        if file.endswith('.csv'):
-            df = pd.read_csv(os.path.join(input_folder, file))[['video_name', 'final']]
-            df['category'] = df['video_name'].apply(extract_category_name)
+        if not file.endswith('.csv'):
+            continue
 
-            # Compute Dominance Ratio and Chi-Square
-            results_df = compute_dominance_ratio_and_chi_square(df)
+        file_path = os.path.join(input_folder, file)
+        df = pd.read_csv(file_path)[['video_name', 'final']]
+        df['category'] = df['video_name'].apply(extract_category_name)
 
-            # Determine Bias Type from Filename (gender or race)
-            bias_type = file.split('_')[1].split('.')[0]
-            output_folder = f'visualizations/{model_name}/{bias_type.capitalize()}/'
-            os.makedirs(output_folder, exist_ok=True)
-            results_df.columns = [f'{bias_type.capitalize()} Class', f'{bias_type.capitalize()} DR', f'{bias_type.capitalize()} Chi-Square']
+        results_df = compute_dominance_ratio_and_chi_square(df)
 
-            combined_results = pd.concat([combined_results, results_df], axis=1)
+        # Correct bias_type extraction: get last part before .csv
+        bias_type = file.replace('.csv', '').split('_')[-1]
+        results_df.columns = [f'{bias_type.capitalize()} Class', f'{bias_type.capitalize()} DR', f'{bias_type.capitalize()} Chi-Square']
 
-            # Save Dominance Ratio Plot
-            plot_and_save(results_df, model_name, f'{bias_type.capitalize()} DR', bias_type, output_folder)
+        combined_results = pd.concat([combined_results, results_df], axis=1)
 
-            # Save Chi-Square Plot
-            plot_and_save(results_df, model_name, f'{bias_type.capitalize()} Chi-Square', bias_type, output_folder)
+        output_folder = os.path.join(output_folder_root, bias_type)
+        os.makedirs(output_folder, exist_ok=True)
 
-    # Save the combined results
+        plot_and_save(results_df, model_name, f'{bias_type.capitalize()} DR', bias_type, output_folder)
+        plot_and_save(results_df, model_name, f'{bias_type.capitalize()} Chi-Square', bias_type, output_folder)
+
     combined_results.index.name = 'Category'
     output_csv = f'data/{model_name}_scores.csv'
     combined_results.to_csv(output_csv)
     print(f"Scores saved to: {output_csv}")
 
 def main():
-    process_model_data('clip')
-    process_model_data('llava')
+    model_folders = [f for f in os.listdir('data') if os.path.isdir(os.path.join('data', f))]
+    for model in model_folders:
+        process_model_data(model)
 
 if __name__ == "__main__":
     main()
