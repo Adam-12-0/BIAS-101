@@ -7,19 +7,21 @@ from datetime import datetime
 OUTPUT_FILE = "search_queries.csv"
 
 # Define the demographic parameters for debiasing
-RACES = [
-    "White",
-    "Black",
-    "Middle Eastern",
-    "Indian",
-    "Asian"
-]
-
 GENDERS = [
     "Men",
     "Women",
 ]
 
+BODY = [
+    "Skinny",
+    "Fat",
+]
+
+AGE = [
+    "Kid",
+    "Young",
+    "Old"
+]
 
 def get_action_categories(ucf_directory):
     """
@@ -46,14 +48,15 @@ def get_action_categories(ucf_directory):
         return []
 
 
-def generate_search_queries(actions, races, genders):
+def generate_search_queries(actions, ages, genders, bodies):
     """
-    Generate search queries by combining race, gender, and action.
+    Generate search queries by combining age, gender, body type, and action.
 
     Args:
         actions (list): List of action categories
-        races (list): List of races to include
+        ages (list): List of age groups to include
         genders (list): List of genders to include
+        bodies (list): List of body types to include
 
     Returns:
         list: List of dictionaries containing the query components and full query
@@ -61,18 +64,20 @@ def generate_search_queries(actions, races, genders):
     queries = []
 
     for action in actions:
-        for race in races:
+        for age in ages:
             for gender in genders:
-                # Format the query
-                query = f"{action} {race} {gender}"
+                for body in bodies:
+                    # Format the query
+                    query = f"{body} {age} {gender} {action}"
 
-                # Store the components for later analysis
-                queries.append({
-                    'action': action,
-                    'race': race,
-                    'gender': gender,
-                    'full_query': query
-                })
+                    # Store the components for later analysis
+                    queries.append({
+                        'action': action,
+                        'age': age,
+                        'gender': gender,
+                        'body': body,
+                        'full_query': query
+                    })
 
     print(f"Generated {len(queries)} unique search queries.")
     return queries
@@ -109,13 +114,8 @@ def main():
     # Preview some action categories
     print(f"Sample action categories: {', '.join(actions[:5])}...")
 
-    # Generate the search queries using the predefined race and gender lists
-    queries = generate_search_queries(actions, RACES, GENDERS)
-
-    # Calculate expected YouTube API costs
-    # total_queries = len(queries)
-    # api_units_per_search = 100  # YouTube API quota units per search operation
-    # total_api_units = total_queries * api_units_per_search
+    # Generate the search queries using the predefined age, gender, and body lists
+    queries = generate_search_queries(actions, AGE, GENDERS, BODY)
 
     print(f"Total queries: {len(queries)}")
 

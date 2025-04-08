@@ -5,13 +5,18 @@ import time
 import argparse
 from googleapiclient.discovery import build
 from datetime import datetime
+from googleapiclient.errors import HttpError
 
 # Configuration
 QUERIES_FILE = "search_queries.csv"
 RESULTS_DIR = "youtube_results"
-MAX_RESULTS_PER_QUERY = 5
-DELAY_BETWEEN_QUERIES = 1  # seconds, to avoid hitting API rate limits
-API_KEY = 'AIzaSyCvqFjB9_6lyYkSWWgTthiz9nOCTlZzMc4'  # Replace with your actual API key
+MAX_RESULTS_PER_QUERY = 50 # 50 is max allowed
+DELAY_BETWEEN_QUERIES = .5  # seconds, to avoid hitting API rate limits
+# Default API keys list - replace with your actual API keys
+API_KEYS = [
+    'AIzaSyCvqFjB9_6lyYkSWWgTthiz9nOCTlZzMc4',
+    # Add more API keys here
+]
 
 
 def setup_results_directory(base_dir=RESULTS_DIR):
@@ -32,38 +37,137 @@ def setup_results_directory(base_dir=RESULTS_DIR):
     return base_dir
 
 
-def search_youtube_videos(query, max_results=10):
+class YouTubeAPIManager:
+    """
+    Manages YouTube API keys and handles rate limit errors.
+    """
+
+    def __init__(self, api_keys):
+        """
+        Initialize with a list of API keys.
+
+        Args:
+            api_keys (list): List of YouTube API keys
+        """
+        self.api_keys = api_keys
+        self.current_key_index = 0
+        self.youtube = self._build_youtube_client()
+
+    def _build_youtube_client(self):
+        """
+        Build a YouTube API client with the current API key.
+
+        Returns:
+            object: YouTube API client
+        """
+        return build('youtube', 'v3', developerKey=self.get_current_key())
+
+    def get_current_key(self):
+        """
+        Get the current API key.
+
+        Returns:
+            str: Current API key
+        """
+        return self.api_keys[self.current_key_index]
+
+    def rotate_key(self):
+        """
+        Rotate to the next API key.
+
+        Returns:
+            bool: True if successfully rotated, False if no more keys
+        """
+        if self.current_key_index < len(self.api_keys) - 1:
+            self.current_key_index += 1
+            self.youtube = self._build_youtube_client()
+            print(f"Switched to API key {self.current_key_index + 1}/{len(self.api_keys)}")
+            return True
+        else:
+            print("WARNING: No more API keys available!")
+            return False
+
+    def is_rate_limit_error(self, error):
+        """
+        Check if an error is due to API rate limiting.
+
+        Args:
+            error: Error object from API call
+
+        Returns:
+            bool: True if rate limit error, False otherwise
+        """
+        if isinstance(error, HttpError):
+            if error.resp.status in [403, 429]:
+                error_details = error._get_reason()
+                rate_limit_messages = ["quotaExceeded", "userRateLimitExceeded", "dailyLimitExceeded",
+                                       "rateLimitExceeded"]
+                return any(msg in error_details for msg in rate_limit_messages)
+        return False
+
+    def execute_with_retry(self, request):
+        """
+        Execute an API request with key rotation on rate limit errors.
+
+        Args:
+            request: YouTube API request object
+
+        Returns:
+            dict: API response
+
+        Raises:
+            Exception: If all API keys are exhausted or other errors occur
+        """
+        max_attempts = len(self.api_keys)
+        attempts = 0
+
+        while attempts < max_attempts:
+            try:
+                return request.execute()
+            except Exception as e:
+                attempts += 1
+                if self.is_rate_limit_error(e):
+                    print(f"Rate limit reached for API key {self.current_key_index + 1}")
+                    if not self.rotate_key():
+                        raise Exception("All API keys have reached their rate limits") from e
+                else:
+                    # Not a rate limit error, re-raise
+                    raise e
+
+        raise Exception("Failed after trying all API keys")
+
+
+def search_youtube_videos(api_manager, query, max_results=10):
     """
     Search YouTube for videos matching the query.
 
     Args:
+        api_manager (YouTubeAPIManager): API manager instance
         query (str): Search term
         max_results (int): Maximum number of results to return
 
     Returns:
         list: List of video data dictionaries
     """
-    youtube = build('youtube', 'v3', developerKey=API_KEY)
-
-    request = youtube.search().list(
+    request = api_manager.youtube.search().list(
         q=query,
         part='snippet',
         type='video',
         maxResults=max_results
     )
 
-    response = request.execute()
+    response = api_manager.execute_with_retry(request)
 
     # Get the video IDs
     video_ids = [item['id']['videoId'] for item in response['items']]
 
     # Get additional metadata for these videos
     if video_ids:
-        videos_request = youtube.videos().list(
+        videos_request = api_manager.youtube.videos().list(
             part='snippet,contentDetails,statistics,topicDetails',
             id=','.join(video_ids)
         )
-        videos_response = videos_request.execute()
+        videos_response = api_manager.execute_with_retry(videos_request)
 
         # Create a mapping of video IDs to their additional metadata
         video_metadata = {item['id']: item for item in videos_response['items']}
@@ -133,13 +237,14 @@ def parse_duration(duration_str):
     return duration
 
 
-def process_video_data(videos, race, gender, action, action_dir):
+def process_video_data(videos, body, age, gender, action, action_dir):
     """
     Process video data and download thumbnails.
 
     Args:
         videos (list): List of video data from YouTube API
-        race (str): Race used in the search query
+        body (str): Body type used in the search query
+        age (str): Age group used in the search query
         gender (str): Gender used in the search query
         action (str): Action used in the search query
         action_dir (str): Directory for the action category
@@ -149,9 +254,8 @@ def process_video_data(videos, race, gender, action, action_dir):
     """
     processed_data = []
 
-    # Create race_gender specific thumbnail directory
-    demographic_dir = f"{race} {gender}"
-    thumbnails_dir = os.path.join(action_dir, 'thumbnails', demographic_dir)
+    # Create a single thumbnails directory under the action directory
+    thumbnails_dir = os.path.join(action_dir, 'thumbnails')
     if not os.path.exists(thumbnails_dir):
         os.makedirs(thumbnails_dir)
 
@@ -165,10 +269,11 @@ def process_video_data(videos, race, gender, action, action_dir):
 
         # Dictionary to store our processed data
         video_data = {
-            'Race': race,
+            'Body': body,
+            'Age': age,
             'Gender': gender,
             'Action': action,
-            'Search Query': f"{race} {gender} {action}",
+            'Search Query': f"{body} {age} {gender} {action}",
             'Title': title,
             'Video ID': video_id,
             'Link': link,
@@ -213,12 +318,13 @@ def process_video_data(videos, race, gender, action, action_dir):
         else:
             thumbnail_url = thumbnails['default']['url']
 
-        # Create a unique filename for the thumbnail
-        img_filename = f"{video_id}.jpg"
+        # Create a unique filename for the thumbnail including demographic info to avoid conflicts
+        # Format: videoID_body_age_gender.jpg
+        img_filename = f"{video_id}_{body}_{age}_{gender}.jpg".replace(" ", "_")
         img_path = os.path.join(thumbnails_dir, img_filename)
 
         # Create a relative path for storage in CSV (easier to move directories later)
-        relative_img_path = os.path.join('thumbnails', demographic_dir, img_filename)
+        relative_img_path = os.path.join('thumbnails', img_filename)
 
         # Download the thumbnail
         success = download_thumbnail(thumbnail_url, img_path)
@@ -305,7 +411,7 @@ def get_completed_queries(results_dir):
         results_dir (str): Directory where results are stored
 
     Returns:
-        set: Set of already processed "race gender action" combinations
+        set: Set of already processed "body age gender action" combinations
     """
     completed = set()
 
@@ -335,14 +441,15 @@ def get_completed_queries(results_dir):
     return completed
 
 
-def process_queries(queries_df, results_dir, max_results=MAX_RESULTS_PER_QUERY, delay=DELAY_BETWEEN_QUERIES,
-                    resume=True):
+def process_queries(queries_df, results_dir, api_manager, max_results=MAX_RESULTS_PER_QUERY,
+                    delay=DELAY_BETWEEN_QUERIES, resume=True):
     """
     Process each query in the DataFrame and save results incrementally.
 
     Args:
         queries_df (pd.DataFrame): DataFrame with search queries
         results_dir (str): Directory to save results
+        api_manager (YouTubeAPIManager): API manager instance
         max_results (int): Maximum results per query
         delay (int): Delay between queries in seconds
         resume (bool): Whether to skip already processed queries
@@ -359,16 +466,18 @@ def process_queries(queries_df, results_dir, max_results=MAX_RESULTS_PER_QUERY, 
             print(f"Found {len(completed_queries)} already processed queries")
 
     print(f"Starting batch processing of {total_queries} queries...")
+    print(f"Using {len(api_manager.api_keys)} API keys")
 
     # Process each query
     for index, row in queries_df.iterrows():
         query = row['full_query']
-        race = row['race']
+        body = row['body']
+        age = row['age']
         gender = row['gender']
         action = row['action']
 
         # Check if this query has already been processed
-        search_query = f"{race} {gender} {action}"
+        search_query = f"{body} {age} {gender} {action}"
         if resume and search_query in completed_queries:
             print(f"[{index + 1}/{total_queries}] Skipping (already processed): '{query}'")
             processed += 1
@@ -381,14 +490,15 @@ def process_queries(queries_df, results_dir, max_results=MAX_RESULTS_PER_QUERY, 
             os.makedirs(action_dir)
 
         try:
-            print(f"[{index + 1}/{total_queries}] Searching: '{query}'")
+            print(
+                f"[{index + 1}/{total_queries}] Searching: '{query}' (using API key {api_manager.current_key_index + 1})")
 
             # Call the YouTube search function
-            videos = search_youtube_videos(query, max_results=max_results)
+            videos = search_youtube_videos(api_manager, query, max_results=max_results)
 
             if videos:
                 # Process the videos and get the data
-                results = process_video_data(videos, race, gender, action, action_dir)
+                results = process_video_data(videos, body, age, gender, action, action_dir)
 
                 # Save results incrementally
                 csv_path = save_results_incrementally(results, action, results_dir)
@@ -406,8 +516,20 @@ def process_queries(queries_df, results_dir, max_results=MAX_RESULTS_PER_QUERY, 
                 time.sleep(delay)
 
         except Exception as e:
-            print(f"  ✗ Error processing query '{query}': {e}")
-            errors += 1
+            if isinstance(e, HttpError) and api_manager.is_rate_limit_error(e):
+                print(f"  ✗ Rate limit reached for current API key")
+                if not api_manager.rotate_key():
+                    print("  ✗ All API keys have reached their rate limits. Stopping.")
+                    break
+
+                # Retry the same query with the new key after a short delay
+                print(f"  Retrying query with new API key...")
+                time.sleep(2)  # Short delay before retrying
+                index -= 1  # Adjust index to retry the same query
+                continue
+            else:
+                print(f"  ✗ Error processing query '{query}': {e}")
+                errors += 1
 
             # Still wait before the next query even if there was an error
             if index < total_queries - 1:
@@ -426,18 +548,35 @@ def main():
     parser.add_argument("--queries", default=QUERIES_FILE, help="CSV file with search queries")
     parser.add_argument("--results-dir", default=RESULTS_DIR, help="Directory to save results")
     parser.add_argument("--max-results", type=int, default=MAX_RESULTS_PER_QUERY, help="Max results per query")
-    parser.add_argument("--delay", type=int, default=DELAY_BETWEEN_QUERIES, help="Delay between queries (seconds)")
+    parser.add_argument("--delay", type=float, default=DELAY_BETWEEN_QUERIES, help="Delay between queries (seconds)")
     parser.add_argument("--subset", type=int, help="Process only a subset of queries (for testing)")
-    parser.add_argument("--api-key", help="YouTube API key")
+    parser.add_argument("--api-keys", nargs='+', help="List of YouTube API keys")
+    parser.add_argument("--api-keys-file", help="File containing YouTube API keys (one per line)")
     parser.add_argument("--no-resume", action="store_true", help="Don't skip already processed queries")
 
     args = parser.parse_args()
 
-    # Override API key if provided
-    if args.api_key:
-        global API_KEY
-        API_KEY = args.api_key
-        print(f"Using provided API key")
+    # Get API keys from command line or file
+    api_keys = API_KEYS  # Default
+
+    if args.api_keys:
+        api_keys = args.api_keys
+        print(f"Using {len(api_keys)} API keys from command line")
+    elif args.api_keys_file:
+        try:
+            with open(args.api_keys_file, 'r') as f:
+                api_keys = [line.strip() for line in f if line.strip()]
+            print(f"Loaded {len(api_keys)} API keys from {args.api_keys_file}")
+        except Exception as e:
+            print(f"Error loading API keys from file: {e}")
+            print("Falling back to default API keys")
+
+    if not api_keys:
+        print("No API keys provided! Please provide at least one API key.")
+        return
+
+    # Initialize API manager
+    api_manager = YouTubeAPIManager(api_keys)
 
     # Setup results directory
     results_dir = setup_results_directory(args.results_dir)
@@ -449,6 +588,7 @@ def main():
     process_queries(
         queries_df,
         results_dir,
+        api_manager,
         args.max_results,
         args.delay,
         resume=not args.no_resume
