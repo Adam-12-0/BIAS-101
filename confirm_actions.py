@@ -10,6 +10,7 @@ import argparse
 import re
 import time
 import csv
+import random
 
 
 def vid_to_np(video_path):
@@ -70,6 +71,7 @@ def inference(model, processor, video, action_desc):
 
     # Preprocess the video frames and text
     inputs = processor(text=action_desc, videos=video_list, return_tensors="pt", padding=True)
+    inputs.to(model.device)
 
     # Perform inference
     with torch.no_grad():
@@ -79,10 +81,19 @@ def inference(model, processor, video, action_desc):
 
     return probs
 
-def process_dir(dir, out_file, processor, model, threshold):
+def process_dir(dir, out_file, captionsCSV, processor, model, threshold):
     """
     Processes all the scene clips in a directory with each action in its own directory. 
-    Saves the results of XCLIP's confidence that the action is being performed or not
+    Saves the results of XCLIP's confidence that the action is being performed or not.
+    
+    Assumed Dir Struct:
+    Folder
+        |
+        -- Folder(s)
+                |
+                -- Action-Scenes-000.mp4
+                -- Action-Scenes-001.mp4
+                ...
     
     Args:
     dir (string): Directory to be processed
@@ -92,54 +103,58 @@ def process_dir(dir, out_file, processor, model, threshold):
     threshold (float) : float of the confidence level you want the model
                         to have to deem the action is being performed
     """
+    captions = {}
+    # Open CSV for captions
+    with open(captionsCSV, 'r') as caps:
+        reader = csv.reader(caps)
+        for row in reader:
+            captions[row[0]] = [row[1], "A person doing something"]
+
     # Open csv to write
     with open(out_file, "w", newline="") as out:
         # Create writer and write headers
         writer = csv.writer(out, delimiter=',')
-        headers = ["file", "action", "XCLIP comfirm confidence", "XCLIP deny confidence", 
-                   f"outcome ({threshold*100}%)", f"outcome ({(threshold+0.05)*100:0.0f}%)", 
-                   f"outcome ({(threshold+0.1)*100:0.0f}%)", f"outcome ({(threshold+0.15)*1000:0.0f}%)", f"outcome ({(threshold+0.2)*100:0.0f}%)"]
+        headers = ["file", "action", "XCLIP comfirm confidence", "XCLIP deny confidence", f"outcome ({threshold*100}%)"]
         writer.writerow(headers)
+
 
         # Walk through each action folder action folder
         for i, folder in enumerate(os.walk(dir)):
             if i==0: # skip first
                 continue
-            
+
             # Top level path to action folder
             top_level_dir = os.path.join(os.getcwd(), folder[0])
             
-            # Extract the action
+            # Extract the action from file name
             first_file = folder[2][0]
             action = first_file[:-14]
-            action = re.findall('[A-Z][^A-Z]*', action)
-            action = " ".join(action)
-            
-            # Generate captions
-            captions = [f"The action of {action} is being performed", f"The action of {action} is NOT being performed"]
+            caption = captions[action]
 
-            # Obtain and write XCLIP out put for each file
-            for file in folder[2]:
+            # Obtain and write XCLIP output for each video file in action folder
+            for j, file in enumerate(folder[2]):
                 path = os.path.join(top_level_dir, file)
-                probs = inference(model, processor, path, captions)
+                probs = inference(model, processor, path, caption)
                 
                 newRow = [
-                    os.path.join(folder[0], file), action, f"{(probs[0][0]*100):0.2f}", f"{(probs[0][1]*100):0.2f}", 
-                    f"{probs[0][0] >= threshold}", f"{probs[0][0] >= (threshold+0.05)}", f"{probs[0][0] >= (threshold+0.1)}",
-                    f"{probs[0][0] >= (threshold+0.15)}", f"{probs[0][0] >= (threshold+0.2)}"
-                ]
-                writer.writerow(newRow)
+                    os.path.join(folder[0], file), action, f"{(probs[0][0]*100):0.2f}", f"{(probs[0][1]*100):0.2f}", f"{probs[0][0] >= threshold}"]
+                writer.writerow(newRow) # Write results to csv
 
             print(f"{action} directory processed.")
 
 def main(args):
+    # Get Device 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(device)
+
     # Load processor and model from hugging face
-    processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch16-ucf-16-shot")
-    model = AutoModel.from_pretrained("microsoft/xclip-base-patch16-ucf-16-shot")
+    processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch16-ucf-2-shot")
+    model = AutoModel.from_pretrained("microsoft/xclip-base-patch16-ucf-2-shot").to(device)
+    # Get captions
+    captionsCSV = "captions.csv"
     
     # Process the directory
-    process_dir(args.dir, args.out, processor, model, args.threshold)
-    
+    process_dir(args.dir, args.out, captionsCSV, processor, model, args.threshold)
     print("Script complete.")
 
 
@@ -148,7 +163,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", help="The directory of the videos you want to test", default=".")
     parser.add_argument("--out", help="Name of the file you want out to", default=f"actions-out-{time.time()}.csv")
-    parser.add_argument("--threshold", help="Confidence threshold for the model", default=0.70, type=float)
+    parser.add_argument("--threshold", help="Confidence threshold for the model", default=0.90, type=float)
     
     args = parser.parse_args()
     main(args)
+
+

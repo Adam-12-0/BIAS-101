@@ -1,0 +1,101 @@
+ApplyEyeMakeup,The action of Apply Eye Makeup is being performed,The action of Apply Eye Makeup is NOT being performed
+ApplyLipstick,The action of Apply Lipstick is being performed,The action of Apply Lipstick is NOT being performed
+Archery,A person in the middle of shooting a bow and arrow,A person holding a bow and arrow but NOT shooting it yet
+BabyCrawling,a baby crawling, a baby but it is NOT crawling
+BalanceBeam,A gymnast performing a balance beam routine, A gymnast NOT performing on the balance beam NOT performing 
+BandMarching,A band that is marching,A band but they are NOT marching
+BaseballPitch,A person pitching a ball, A person is NOT pitching NOT pitching
+Basketball,The action of Basketball is being performed,The action of Basketball is NOT being performed
+BasketballDunk,A person Dunking on a basketball hoop, A person that is not Dunking on a basketball hoop
+BenchPress,The action of Bench Press is being performed,The action of Bench Press is NOT being performed
+Biking,A person riding a bike, person with a bike NOT riding a bike NOT riding the bike
+Billiards,Someone in the middle of playing Billiards,Someone about to play Billiards but are not yet
+BlowDryHair,The action of Blow Dry Hair is being performed,The action of Blow Dry Hair is NOT being performed
+BlowingCandles,The action of Blowing Candles is being performed,The action of Blowing Candles is NOT being performed
+BodyWeightSquats,The action of Body Weight Squats is being performed,The action of Body Weight Squats is NOT being performed
+Bowling,The action of Bowling is being performed,The action of Bowling is NOT being performed
+BoxingPunchingBag,The action of Boxing Punching Bag is being performed,The action of Boxing Punching Bag is NOT being performed
+BoxingSpeedBag,The action of Boxing Speed Bag is being performed,The action of Boxing Speed Bag is NOT being performed
+BreastStroke,The action of Breast Stroke is being performed,The action of Breast Stroke is NOT being performed
+BrushingTeeth,Someone is brushing  their teeth,A person that is NOT brushing their teeth
+CleanAndJerk,A person performing the Clean And Jerk exercise,A person is NOT performing the Clean And Jerk exercise
+CliffDiving,A person diving off of a cliff,A person by a cliff but NOT diving NOT diving
+CricketBowling,The action of Cricket Bowling is being performed,The action of Cricket Bowling is NOT being performed
+CricketShot,The action of Cricket Shot is being performed,The action of Cricket Shot is NOT being performed
+CuttingInKitchen,The action of Cutting In Kitchen is being performed,The action of Cutting In Kitchen is NOT being performed
+Diving,The action of Diving is being performed,The action of Diving is NOT being performed
+Drumming,The action of Drumming is being performed,The action of Drumming is NOT being performed
+Fencing,The action of Fencing is being performed,The action of Fencing is NOT being performed
+FieldHockeyPenalty,The action of Field Hockey Penalty is being performed,The action of Field Hockey Penalty is NOT being performed
+FloorGymnastics,The action of Floor Gymnastics is being performed,The action of Floor Gymnastics is NOT being performed
+FrisbeeCatch,The action of Frisbee Catch is being performed,The action of Frisbee Catch is NOT being performed
+FrontCrawl,The action of Front Crawl is being performed,The action of Front Crawl is NOT being performed
+GolfSwing,The action of Golf Swing is being performed,The action of Golf Swing is NOT being performed
+Haircut,The action of Haircut is being performed,The action of Haircut is NOT being performed
+Hammering,The action of Hammering is being performed,The action of Hammering is NOT being performed
+HammerThrow,The action of Hammer Throw is being performed,The action of Hammer Throw is NOT being performed
+HandstandPushups,The action of Handstand Pushups is being performed,The action of Handstand Pushups is NOT being performed
+HandstandWalking,The action of Handstand Walking is being performed,The action of Handstand Walking is NOT being performed
+HeadMassage,The action of Head Massage is being performed,The action of Head Massage is NOT being performed
+HighJump,The action of High Jump is being performed,The action of High Jump is NOT being performed
+HorseRace,The action of Horse Race is being performed,The action of Horse Race is NOT being performed
+HorseRiding,The action of Horse Riding is being performed,The action of Horse Riding is NOT being performed
+HulaHoop,The action of Hula Hoop is being performed,The action of Hula Hoop is NOT being performed
+IceDancing,The action of Ice Dancing is being performed,The action of Ice Dancing is NOT being performed
+JavelinThrow,The action of Javelin Throw is being performed,The action of Javelin Throw is NOT being performed
+JugglingBalls,The action of Juggling Balls is being performed,The action of Juggling Balls is NOT being performed
+JumpingJack,The action of Jumping Jack is being performed,The action of Jumping Jack is NOT being performed
+JumpRope,The action of Jump Rope is being performed,The action of Jump Rope is NOT being performed
+Kayaking,The action of Kayaking is being performed,The action of Kayaking is NOT being performed
+Knitting,The action of Knitting is being performed,The action of Knitting is NOT being performed
+LongJump,The action of Long Jump is being performed,The action of Long Jump is NOT being performed
+Lunges,The action of Lunges is being performed,The action of Lunges is NOT being performed
+MilitaryParade,The action of Military Parade is being performed,The action of Military Parade is NOT being performed
+Mixing,The action of Mixing is being performed,The action of Mixing is NOT being performed
+MoppingFloor,The action of Mopping Floor is being performed,The action of Mopping Floor is NOT being performed
+Nunchucks,The action of Nunchucks is being performed,The action of Nunchucks is NOT being performed
+ParallelBars,The action of Parallel Bars is being performed,The action of Parallel Bars is NOT being performed
+PizzaTossing,The action of Pizza Tossing is being performed,The action of Pizza Tossing is NOT being performed
+PlayingCello,The action of Playing Cello is being performed,The action of Playing Cello is NOT being performed
+PlayingDaf,The action of Playing Daf is being performed,The action of Playing Daf is NOT being performed
+PlayingDhol,The action of Playing Dhol is being performed,The action of Playing Dhol is NOT being performed
+PlayingFlute,The action of Playing Flute is being performed,The action of Playing Flute is NOT being performed
+PlayingGuitar,The action of Playing Guitar is being performed,The action of Playing Guitar is NOT being performed
+PlayingPiano,The action of Playing Piano is being performed,The action of Playing Piano is NOT being performed
+PlayingSitar,The action of Playing Sitar is being performed,The action of Playing Sitar is NOT being performed
+PlayingTabla,The action of Playing Tabla is being performed,The action of Playing Tabla is NOT being performed
+PlayingViolin,The action of Playing Violin is being performed,The action of Playing Violin is NOT being performed
+PoleVault,The action of Pole Vault is being performed,The action of Pole Vault is NOT being performed
+PommelHorse,The action of Pommel Horse is being performed,The action of Pommel Horse is NOT being performed
+PullUps,The action of Pull Ups is being performed,The action of Pull Ups is NOT being performed
+Punch,The action of Punch is being performed,The action of Punch is NOT being performed
+PushUps,The action of Push Ups is being performed,The action of Push Ups is NOT being performed
+Rafting,The action of Rafting is being performed,The action of Rafting is NOT being performed
+RockClimbingIndoor,The action of Rock Climbing Indoor is being performed,The action of Rock Climbing Indoor is NOT being performed
+RopeClimbing,The action of Rope Climbing is being performed,The action of Rope Climbing is NOT being performed
+Rowing,The action of Rowing is being performed,The action of Rowing is NOT being performed
+SalsaSpin,The action of Salsa Spin is being performed,The action of Salsa Spin is NOT being performed
+ShavingBeard,The action of Shaving Beard is being performed,The action of Shaving Beard is NOT being performed
+Shotput,The action of Shotput is being performed,The action of Shotput is NOT being performed
+SkateBoarding,The action of Skate Boarding is being performed,The action of Skate Boarding is NOT being performed
+Skiing,The action of Skiing is being performed,The action of Skiing is NOT being performed
+Skijet,The action of Skijet is being performed,The action of Skijet is NOT being performed
+SkyDiving,The action of Sky Diving is being performed,The action of Sky Diving is NOT being performed
+SoccerJuggling,The action of Soccer Juggling is being performed,The action of Soccer Juggling is NOT being performed
+SoccerPenalty,The action of Soccer Penalty is being performed,The action of Soccer Penalty is NOT being performed
+StillRings,The action of Still Rings is being performed,The action of Still Rings is NOT being performed
+SumoWrestling,The action of Sumo Wrestling is being performed,The action of Sumo Wrestling is NOT being performed
+Surfing,The action of Surfing is being performed,The action of Surfing is NOT being performed
+Swing,The action of Swing is being performed,The action of Swing is NOT being performed
+TableTennisShot,The action of Table Tennis Shot is being performed,The action of Table Tennis Shot is NOT being performed
+TaiChi,The action of Tai Chi is being performed,The action of Tai Chi is NOT being performed
+TennisSwing,The action of Tennis Swing is being performed,The action of Tennis Swing is NOT being performed
+ThrowDiscus,The action of Throw Discus is being performed,The action of Throw Discus is NOT being performed
+TrampolineJumping,The action of Trampoline Jumping is being performed,The action of Trampoline Jumping is NOT being performed
+Typing,The action of Typing is being performed,The action of Typing is NOT being performed
+UnevenBars,The action of Uneven Bars is being performed,The action of Uneven Bars is NOT being performed
+VolleyballSpiking,The action of Volleyball Spiking is being performed,The action of Volleyball Spiking is NOT being performed
+WalkingWithDog,The action of Walking With Dog is being performed,The action of Walking With Dog is NOT being performed
+WallPushups,The action of Wall Pushups is being performed,The action of Wall Pushups is NOT being performed
+WritingOnBoard,The action of Writing On Board is being performed,The action of Writing On Board is NOT being performed
+YoYo,The action of Yo Yo is being performed,The action of Yo Yo is NOT being performed
