@@ -39,7 +39,7 @@ def compute_dominance_ratio_and_chi_square(df: pd.DataFrame) -> pd.DataFrame:
 
         category_stats[category] = {
             'Dominant Class': most_represented,
-            'Dominance Ratio': dominance_ratio,
+            'Dominance Ratio': dominance_ratio * 100,
             'Chi-Square': chi_square
         }
 
@@ -48,23 +48,33 @@ def compute_dominance_ratio_and_chi_square(df: pd.DataFrame) -> pd.DataFrame:
 def plot_and_save(data, model_name, metric_name, bias_type, output_folder):
     plt.figure(figsize=(12, 6))
 
+    handles = []
+
     if metric_name == f'{bias_type.capitalize()} DR':
         unique_categories = sorted(data[f'{bias_type.capitalize()} Class'].unique())
         colors = {sub: HIGH_CONTRAST_COLORS[i % len(HIGH_CONTRAST_COLORS)] for i, sub in enumerate(unique_categories)}
         bar_colors = [colors[class_name] if class_name in colors else 'gray' for class_name in data[f'{bias_type.capitalize()} Class']]
-        plt.bar(data.index, data[metric_name], color=bar_colors)
-        legend_handles = [plt.Line2D([0], [0], color=colors[key], lw=4, label=key) for key in colors.keys()]
-        plt.legend(handles=legend_handles, loc='upper right', fontsize=15)
-    else:
-        plt.bar(data.index, data[metric_name], color='blue')
+        bars = plt.bar(data.index, data[metric_name], color=bar_colors)
 
+        # Add legend handles for each class
+        for key in colors.keys():
+            handles.append(plt.Line2D([0], [0], color=colors[key], lw=4, label=key))
+    else:
+        bars = plt.bar(data.index, data[metric_name], color='blue')
+
+    # Add average line
     avg = data[metric_name].mean()
-    plt.axhline(y=avg, color='red', linestyle='dashed', linewidth=2, label=f'Avg: {avg:.2f}')
+    avg_line = plt.axhline(y=avg, color='red', linestyle='dashed', linewidth=2, label=f'Avg: {avg:.2f}')
+    handles.append(avg_line)
+
     plt.xticks(rotation=45, ha='right', fontsize=5)
     plt.title(f'{model_name.upper()} - {metric_name} Visualization')
     plt.xlabel('Action Categories', fontsize=12)
     plt.ylabel(metric_name, fontsize=12)
     plt.tight_layout()
+
+    # Show full legend
+    plt.legend(handles=handles, loc='upper right', fontsize=10)
 
     plot_name = f'{bias_type}_dr.png' if 'DR' in metric_name else f'{bias_type}_chi.png'
     plt.savefig(f'{output_folder}/{plot_name}')
