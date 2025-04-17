@@ -7,20 +7,56 @@ from datetime import datetime
 OUTPUT_FILE = "search_queries.csv"
 
 # Define the demographic parameters for debiasing
-GENDERS = [
-    "Men",
-    "Women",
-]
+# GENDERS = [
+#     "Male",
+#     "Female",
+# ]
+#
+# RACE = ["White person",
+#         "Black person",
+#         "Middle Eastern person",
+#         "Indian person",
+#         "Asian person",
+#         "Hispanic person",
+#         ]
+#
+# # These are no longer used in the new query format but kept for reference
+# BODY = [
+#     "Wide body",
+#     "Thin body",
+# ]
+# #
+# AGE = [
+#     "Kid",
+#     "Young person",
+#     "Old person"
+# ]
+#
+# HAIR = [
+#     "Red hair",
+#     "Blonde hair",
+#     "Black hair",
+#     "White hair"
+# ]
 
-BODY = [
-    "Skinny",
-    "Fat",
-]
-
-AGE = [
+BIAS = [
+    "Male",
+    "Female",
+    "White person",
+    "Black person",
+    "Middle Eastern person",
+    "Indian person",
+    "Asian person",
+    "Hispanic person",
+    "Wide body",
+    "Thin body",
     "Kid",
-    "Young",
-    "Old"
+    "Young person",
+    "Old person",
+    "Red hair",
+    "Blonde hair",
+    "Black hair",
+    "White hair"
 ]
 
 def get_action_categories(ucf_directory):
@@ -48,15 +84,14 @@ def get_action_categories(ucf_directory):
         return []
 
 
-def generate_search_queries(actions, ages, genders, bodies):
+def generate_search_queries(actions, biases):
     """
-    Generate search queries by combining age, gender, body type, and action.
+    Generate search queries by combining bias and action in the format:
+    {BIAS} + {action}
 
     Args:
         actions (list): List of action categories
-        ages (list): List of age groups to include
-        genders (list): List of genders to include
-        bodies (list): List of body types to include
+        biases (list): List of bias categories to include
 
     Returns:
         list: List of dictionaries containing the query components and full query
@@ -64,20 +99,16 @@ def generate_search_queries(actions, ages, genders, bodies):
     queries = []
 
     for action in actions:
-        for age in ages:
-            for gender in genders:
-                for body in bodies:
-                    # Format the query
-                    query = f"{body} {age} {gender} {action}"
+        for bias in biases:
+            # Format the query in the new format
+            query = f"{bias} {action}"
 
-                    # Store the components for later analysis
-                    queries.append({
-                        'action': action,
-                        'age': age,
-                        'gender': gender,
-                        'body': body,
-                        'full_query': query
-                    })
+            # Store the components for later analysis
+            queries.append({
+                'action': action,
+                'bias': bias,
+                'full_query': query
+            })
 
     print(f"Generated {len(queries)} unique search queries.")
     return queries
@@ -114,8 +145,8 @@ def main():
     # Preview some action categories
     print(f"Sample action categories: {', '.join(actions[:5])}...")
 
-    # Generate the search queries using the predefined age, gender, and body lists
-    queries = generate_search_queries(actions, AGE, GENDERS, BODY)
+    # Generate the search queries using actions and all bias categories
+    queries = generate_search_queries(actions, BIAS)
 
     print(f"Total queries: {len(queries)}")
 
