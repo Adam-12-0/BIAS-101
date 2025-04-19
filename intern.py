@@ -390,6 +390,8 @@ def main(args):
 if __name__ == "__main__":
     # Arguments 
     parser = argparse.ArgumentParser()
+    
+    # dir = your/path/to/folder --> folder(Actions(Videos(scene.mp4)))
     parser.add_argument("dir", help="The path of the directory of the videos you want to test")
     parser.add_argument("--out", help="Name of the file you want out to", default=f"actions-out-{time.time()}.csv")
     parser.add_argument("--num_shots", type=int, help="Number of times you want to run inference for the action category", default=1)
