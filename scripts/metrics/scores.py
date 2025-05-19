@@ -102,7 +102,7 @@ def process_model_data(model_name: str):
 
         combined_results = pd.concat([combined_results, results_df], axis=1)
 
-        output_folder = os.path.join(output_folder_root, bias_type)
+        output_folder = os.path.join(output_folder_root, bias_type.capitalize())
         os.makedirs(output_folder, exist_ok=True)
 
         plot_and_save(results_df, model_name, f'{bias_type.capitalize()} DR', bias_type, output_folder)

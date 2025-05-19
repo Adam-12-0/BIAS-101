@@ -3,3 +3,5 @@ UCF101.pdf
 .venv/ 
 __pycache__/ 
 FRAMES/
+*.pdf
+*.md
